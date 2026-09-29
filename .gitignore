@@ -1,0 +1,18 @@
+# Frontend
+trimly-app/node_modules/
+trimly-app/.expo/
+trimly-app/dist/
+trimly-app/web-build/
+trimly-app/.env
+
+# Backend
+trimly-api/vendor/
+trimly-api/node_modules/
+trimly-api/.env
+trimly-api/storage/logs/
+trimly-api/bootstrap/cache/
+
+# General
+*.log
+.DS_Store
+Thumbs.db

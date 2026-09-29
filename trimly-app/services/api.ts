@@ -1,4 +1,4 @@
-const API_URL = "http://192.168.110.205:8000/api";
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export async function getSalons() {
   const response = await fetch(`${API_URL}/salons`);
