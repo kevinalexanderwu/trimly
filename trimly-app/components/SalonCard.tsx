@@ -23,8 +23,11 @@ export default function SalonCard({
   if (variant === "list") {
     return (
       <Pressable
+        disabled={!salon.open}
         onPress={onPress}
-        className="bg-white rounded-2xl flex-row gap-3 p-3 shadow-sm border border-gray-50"
+        className={`bg-white rounded-2xl flex-row gap-3 p-3 shadow-sm border border-gray-50 ${
+          salon.open ? "" : "opacity-50"
+        }`}
       >
         <Image
           source={{ uri: salon.image }}
@@ -72,8 +75,11 @@ export default function SalonCard({
 
   return (
     <Pressable
+      disabled={!salon.open}
       onPress={onPress}
-      className="w-[195px] bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-50"
+      className={`w-[195px] bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-50 ${
+        salon.open ? "" : "opacity-50"
+      }`}
     >
       <View className="relative">
         <Image

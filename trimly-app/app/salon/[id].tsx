@@ -17,15 +17,34 @@ import {
 const TABS = ["services", "barbers", "info"] as const;
 
 export default function SalonDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const {
+    id,
+    tab: initialTab,
+    serviceIndices,
+  } = useLocalSearchParams<{
+    id: string;
+    tab?: string;
+    serviceIndices?: string;
+  }>();
   const insets = useSafeAreaInsets();
-  const [tab, setTab] = useState<(typeof TABS)[number]>("services");
+  const [tab, setTab] = useState<(typeof TABS)[number]>(
+    initialTab === "barbers" ? "barbers" : "services"
+  );
 
   const [salon, setSalon] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [fav, setFav] = useState(false);
   const barbers = salon?.hairstylists ?? [];
   const services = salon?.services ?? [];
+  const [selectedStaff, setSelectedStaff] = useState<{
+    hair: number | null;
+    massage: number | null;
+    nail: number | null;
+  }>({
+    hair: null,
+    massage: null,
+    nail: null,
+  });
 
   useEffect(() => {
     if (!id) return;
@@ -110,6 +129,64 @@ export default function SalonDetail() {
     } catch (error) {
       console.error("❌ FAVORITE ERROR:", error);
     }
+  };
+
+  type StaffCategory = "hair" | "massage" | "nail";
+
+  const getStaffCategory = (barber: any): StaffCategory | null => {
+    const specialty = String(barber.specialty ?? "").toLowerCase();
+
+    if (specialty.includes("terapis")) {
+      return "massage";
+    }
+
+    if (specialty.includes("nail")) {
+      return "nail";
+    }
+
+    if (specialty.includes("hair")) {
+      return "hair";
+    }
+
+    return null;
+  };
+
+  const selectedServiceItems = String(serviceIndices ?? "")
+    .split(",")
+    .map(Number)
+    .filter((index) => !Number.isNaN(index))
+    .map((index) => services[index])
+    .filter(Boolean);
+
+  const requiredStaffCategories = Array.from(
+    new Set(
+      selectedServiceItems
+        .map((service: any) => service.service_category)
+        .filter(Boolean)
+    )
+  );
+
+  const visibleBarbers =
+    requiredStaffCategories.length > 0
+      ? barbers.filter((barber: any) => {
+          const category = getStaffCategory(barber);
+
+          return category
+            ? requiredStaffCategories.includes(category)
+            : false;
+        })
+      : barbers;
+
+  const handleSelectStaff = (barber: any) => {
+    const category = getStaffCategory(barber);
+
+    if (!category) return;
+
+    setSelectedStaff((current) => ({
+      ...current,
+      [category]:
+        current[category] === barber.id ? null : barber.id,
+    }));
   };
 
   return (
@@ -288,15 +365,23 @@ export default function SalonDetail() {
               </View>
             ))}
 
-          {tab === "barbers" &&
-            barbers.map((b: any) => (
-              <BarberCard
-                key={b.id}
-                barber={b}
-                variant="list"
-                onPress={() => router.push(`/barber/${b.id}`)}
-              />
-            ))}
+            {tab === "barbers" &&
+              visibleBarbers.map((b: any) => {
+                const category = getStaffCategory(b);
+
+                const isSelected =
+                  category !== null && selectedStaff[category] === b.id;
+
+                return (
+                  <BarberCard
+                    key={b.id}
+                    barber={b}
+                    variant="list"
+                    selected={isSelected}
+                    onPress={() => handleSelectStaff(b)}
+                  />
+                );
+              })}
 
           {tab === "info" && (
             <>
@@ -330,23 +415,66 @@ export default function SalonDetail() {
               </View>
             </>
           )}
+          {tab === "barbers" && (
+          <Pressable
+            disabled={
+              !Object.values(selectedStaff).some((id) => id !== null)
+            }
+            onPress={() => {
+              const selectedIds = Object.values(selectedStaff).filter(
+                (id): id is number => id !== null
+              );
+
+              if (selectedIds.length === 0) return;
+
+              router.push({
+                pathname: `/booking/${salon.id}`,
+                params: {
+                  barberId: String(selectedIds[0]),
+                  serviceIndices: serviceIndices ?? "",
+                  staffSelections: JSON.stringify(selectedStaff),
+                },
+              });
+            }}
+            className={`rounded-2xl py-4 items-center justify-center ${
+              Object.values(selectedStaff).some((id) => id !== null)
+                ? "bg-primary-600"
+                : "bg-gray-200"
+            }`}
+          >
+            <Text
+              className={`font-poppins-bold text-sm ${
+                Object.values(selectedStaff).some((id) => id !== null)
+                  ? "text-white"
+                  : "text-gray-400"
+              }`}
+            >
+              Confirm Selection
+            </Text>
+          </Pressable>
+        )}
         </View>
       </ScrollView>
 
       {/* CTA */}
-      <View className="absolute bottom-0 left-0 right-0 px-5 pb-6 pt-8">
-        <Pressable
-          onPress={() =>
-            router.push(`/booking/${salon.id}?barberId=${barbers[0]?.id ?? ""}`)
-          }
-          className="bg-primary-600 rounded-2xl py-4 flex-row items-center justify-center gap-2 shadow-xl"
-        >
-          <Ionicons name="calendar" size={16} color="#fff" />
-          <Text className="text-white font-poppins-bold text-sm">
-            Book Appointment
-          </Text>
-        </Pressable>
-      </View>
+      {tab !== "barbers" && (
+        <View className="absolute bottom-0 left-0 right-0 px-5 pb-6 pt-8">
+          <Pressable
+            onPress={() =>
+              router.push(
+                `/booking/${salon.id}?barberId=${barbers[0]?.id ?? ""}`
+              )
+            }
+            className="bg-primary-600 rounded-2xl py-4 flex-row items-center justify-center gap-2 shadow-xl"
+          >
+            <Ionicons name="calendar" size={16} color="#fff" />
+
+            <Text className="text-white font-poppins-bold text-sm">
+              Book Appointment
+            </Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }

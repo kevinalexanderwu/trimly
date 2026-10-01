@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -20,9 +21,7 @@ import {
   getBookings,
   submitReviewApi,
 } from "../../services/api";
-
 const RATING_LABELS = ["", "Poor", "Fair", "Good", "Great", "Excellent!"];
-
 export default function Bookings() {
   const insets = useSafeAreaInsets();
   const { cancelBooking, markRated, showToast } = useApp();
@@ -31,10 +30,20 @@ export default function Bookings() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log("BOOKINGS: mulai mengambil data...");
+    const loadBookings = async () => {
+      try {
+        const token = await AsyncStorage.getItem("auth_token");
 
-    getBookings()
-      .then((data) => {
+        console.log("TOKEN:", token);
+
+        if (!token) {
+          console.log("User belum login");
+          setBookings([]);
+          return;
+        }
+
+        const data = await getBookings(token);
+
         console.log("BOOKINGS FROM API:", data);
 
         const formattedBookings = data.map((booking: any) => ({
@@ -43,36 +52,24 @@ export default function Bookings() {
 
           salon: booking.salon?.name ?? "Unknown Salon",
 
-          barber: booking.hairstylist?.name ?? "Any Hairstylist",
+          staff:
+            booking.staff?.length > 0
+              ? booking.staff
+                  .map((staff: any) => `${staff.name} (${staff.pivot?.service_category ?? ""})`)
+                  .join(", ")
+              : booking.hairstylist?.name ?? "Any Hairstylist",
 
           service:
             booking.services?.map((service: any) => service.name).join(", ") ??
             "No service",
 
-          date: (() => {
-            const dateOnly = booking.booking_date?.split("T")[0];
-
-            if (!dateOnly) return "";
-
-            const [year, month, day] = dateOnly.split("-");
-
-            const months = [
-              "Jan",
-              "Feb",
-              "Mar",
-              "Apr",
-              "May",
-              "Jun",
-              "Jul",
-              "Aug",
-              "Sep",
-              "Oct",
-              "Nov",
-              "Dec",
-            ];
-
-            return `${day} ${months[Number(month) - 1]}`;
-          })(),
+          date: booking.booking_date
+            ? new Date(booking.booking_date).toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })
+            : "",
 
           time: booking.booking_time?.slice(0, 5) ?? "",
 
@@ -90,13 +87,14 @@ export default function Bookings() {
         console.log("FORMATTED BOOKINGS:", formattedBookings);
 
         setBookings(formattedBookings);
-      })
-      .catch((error) => {
-        console.error("BOOKINGS API ERROR:", error);
-      })
-      .finally(() => {
+      } catch (error) {
+        console.error("BOOKINGS ERROR:", error);
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    loadBookings();
   }, []);
 
   const handleCancelBooking = async () => {
@@ -300,7 +298,7 @@ export default function Bookings() {
                     </Text>
                   </View>
                   <Text className="text-xs text-gray-400 mt-0.5 font-inter">
-                    {bk.barber} · {bk.service}
+                    {bk.staff} · {bk.service}
                   </Text>
                 </View>
               </View>
@@ -422,7 +420,7 @@ export default function Bookings() {
                   {cancelTarget.salon}
                 </Text>
                 <Text className="text-xs text-gray-400 font-inter">
-                  {cancelTarget.service} · {cancelTarget.barber}
+                  {cancelTarget.service} · {cancelTarget.staff}
                 </Text>
               </View>
             </View>
@@ -459,7 +457,7 @@ export default function Bookings() {
               Rate Your Experience
             </Text>
             <Text className="text-xs text-gray-400 mt-0.5 mb-5 font-inter">
-              {reviewTarget.salon} · {reviewTarget.barber}
+              {reviewTarget.salon} · {reviewTarget.staff}
             </Text>
             <View className="flex-row justify-center mb-5">
               <RatingStars

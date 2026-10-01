@@ -8,12 +8,14 @@ type Props = {
   barber: Barber;
   onPress: () => void;
   variant?: "grid" | "list";
+  selected?: boolean;
 };
 
 export default function BarberCard({
   barber,
   onPress,
   variant = "grid",
+  selected = false,
 }: Props) {
   if (variant === "list") {
     return (
@@ -58,7 +60,17 @@ export default function BarberCard({
             </Text>
           </View>
         </View>
-        <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
+        <View
+          className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
+            selected
+              ? "bg-primary-600 border-primary-600"
+              : "border-gray-300 bg-white"
+          }`}
+        >
+          {selected && (
+            <Ionicons name="checkmark" size={14} color="#fff" />
+          )}
+        </View>
       </Pressable>
     );
   }

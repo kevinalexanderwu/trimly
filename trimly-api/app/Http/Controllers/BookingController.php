@@ -14,6 +14,12 @@ class BookingController extends Controller
         $validated = $request->validate([
             'salon_id' => 'required|exists:salons,id',
             'hairstylist_id' => 'nullable|exists:hairstylists,id',
+
+            'staff_selections' => 'nullable|array',
+            'staff_selections.hair' => 'nullable|exists:hairstylists,id',
+            'staff_selections.massage' => 'nullable|exists:hairstylists,id',
+            'staff_selections.nail' => 'nullable|exists:hairstylists,id',
+
             'booking_date' => 'required|date',
             'booking_time' => 'required',
             'service_ids' => 'required|array|min:1',
@@ -35,14 +41,67 @@ class BookingController extends Controller
             ], 422);
         }
 
+        $staffSelections = $validated['staff_selections'] ?? [];
+
+        foreach ($staffSelections as $category => $hairstylistId) {
+            if (!$hairstylistId) {
+                continue;
+            }
+
+            $staff = $salon->hairstylists()
+                ->where('id', $hairstylistId)
+                ->first();
+
+            if (!$staff) {
+                return response()->json([
+                    'message' => 'Selected staff does not belong to this salon.'
+                ], 422);
+            }
+        }
+
+        $staffSelections = $validated['staff_selections'] ?? [];
+
+        foreach ($staffSelections as $category => $hairstylistId) {
+            if (!$hairstylistId) {
+                continue;
+            }
+
+            $staff = $salon->hairstylists()
+                ->where('id', $hairstylistId)
+                ->first();
+
+            if (!$staff) {
+                return response()->json([
+                    'message' => 'Selected staff does not belong to this salon.'
+                ], 422);
+            }
+
+            $specialty = strtolower($staff->specialty ?? '');
+
+            $isValidCategory = match ($category) {
+                'hair' => str_contains($specialty, 'hair'),
+                'massage' => str_contains($specialty, 'terapis'),
+                'nail' => str_contains($specialty, 'nail'),
+                default => false,
+            };
+
+            if (!$isValidCategory) {
+                return response()->json([
+                    'message' => "Selected staff does not match the {$category} service category."
+                ], 422);
+            }
+        }
+
         $totalPrice = $services->sum('price');
 
         $booking = DB::transaction(function () use (
             $validated,
             $services,
-            $totalPrice
+            $totalPrice,
+            $request
         ) {
             $booking = Booking::create([
+                'user_id' => $request->user()->id,
                 'salon_id' => $validated['salon_id'],
                 'hairstylist_id' => $validated['hairstylist_id'] ?? null,
                 'booking_date' => $validated['booking_date'],
@@ -50,6 +109,18 @@ class BookingController extends Controller
                 'total_price' => $totalPrice,
                 'status' => 'upcoming',
             ]);
+
+            $staffSelections = $validated['staff_selections'] ?? [];
+
+            foreach ($staffSelections as $category => $hairstylistId) {
+                if (!$hairstylistId) {
+                    continue;
+                }
+
+                $booking->staff()->attach($hairstylistId, [
+                    'service_category' => $category,
+                ]);
+            }
 
             foreach ($services as $service) {
                 $booking->services()->attach(
@@ -68,6 +139,7 @@ class BookingController extends Controller
             'salon',
             'hairstylist',
             'services',
+            'staff',
         ]);
 
         return response()->json([
@@ -76,14 +148,16 @@ class BookingController extends Controller
         ], 201);
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $bookings = Booking::with([
             'salon',
             'hairstylist',
             'services',
+            'staff',
             'review',
         ])
+        ->where('user_id', $request->user()->id)
         ->latest()
         ->get();
 
@@ -96,6 +170,7 @@ class BookingController extends Controller
             'salon',
             'hairstylist',
             'services',
+            'staff',
             'review',
         ])->findOrFail($id);
 

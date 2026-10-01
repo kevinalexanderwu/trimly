@@ -20,18 +20,29 @@ export async function getSalon(id: string | number) {
   return response.json();
 }
 
-export async function createBooking(data: {
-  salon_id: number;
-  hairstylist_id?: number | null;
-  booking_date: string;
-  booking_time: string;
-  service_ids: number[];
-}) {
+export async function createBooking(
+  data: {
+    salon_id: number;
+    hairstylist_id?: number | null;
+
+    staff_selections?: {
+      hair: number | null;
+      massage: number | null;
+      nail: number | null;
+    };
+
+    booking_date: string;
+    booking_time: string;
+    service_ids: number[];
+  },
+  token: string
+) {
   const response = await fetch(`${API_URL}/bookings`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(data),
   });
@@ -46,14 +57,26 @@ export async function createBooking(data: {
   return result;
 }
 
-export async function getBookings() {
-  const response = await fetch(`${API_URL}/bookings`);
+export async function getBookings(token: string) {
+  console.log("GET BOOKINGS TOKEN:", token);
+
+  const response = await fetch(`${API_URL}/bookings`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  console.log("GET BOOKINGS STATUS:", response.status);
+
+  const result = await response.json();
 
   if (!response.ok) {
-    throw new Error("Failed to fetch bookings");
+    throw new Error(result.message || "Failed to fetch bookings");
   }
 
-  return response.json();
+  return result;
 }
 
 export async function cancelBookingApi(id: number) {

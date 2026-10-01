@@ -46,7 +46,13 @@ export default function Home() {
         console.log("HOME FORMATTED:", formattedSalons);
         console.log("HOME FORMATTED JUMLAH:", formattedSalons.length);
 
-        setSalons(formattedSalons);
+        const sortedSalons = [...formattedSalons].sort((a, b) => {
+          if (a.id === 21) return -1;
+          if (b.id === 21) return 1;
+          return a.id - b.id;
+        });
+
+        setSalons(sortedSalons);
       })
       .catch((error) => {
         console.error("HOME API ERROR:", error);
@@ -160,7 +166,10 @@ export default function Home() {
                   salon={s}
                   isFavorite={isFavorite(s.id)}
                   onToggleFavorite={() => toggleFavorite(s.id)}
-                  onPress={() => router.push(`/salon/${s.id}`)}
+                  onPress={() => {
+                    if (!s.open) return;
+                    router.push(`/salon/${s.id}`);
+                  }}
                 />
               ))}
             </ScrollView>
@@ -180,7 +189,10 @@ export default function Home() {
                   variant="list"
                   isFavorite={isFavorite(s.id)}
                   onToggleFavorite={() => toggleFavorite(s.id)}
-                  onPress={() => router.push(`/salon/${s.id}`)}
+                  onPress={() => {
+                    if (!s.open) return;
+                    router.push(`/salon/${s.id}`);
+                  }}
                 />
               ))}
             </View>

@@ -309,6 +309,8 @@ export const TIMES = [
   "10:30",
   "11:00",
   "11:30",
+  "12:00",
+  "12:30",
   "13:00",
   "13:30",
   "14:00",
@@ -316,19 +318,29 @@ export const TIMES = [
   "15:00",
   "15:30",
   "16:00",
+  "16:30",
+  "17:00",
+  "17:30",
+  "18:00",
+  "18:30",
+  "19:00",
+  "19:30",
+  "20:00",
+  "20:30",
+  "21:00",
+  "21:30",
+  "22:00",
 ];
 export const TAKEN_TIMES = new Set(["09:30", "10:30", "13:30", "15:30"]);
 
-export const CAL_DAYS = [
-  { d: 14, w: "Mon" },
-  { d: 15, w: "Tue" },
-  { d: 16, w: "Wed" },
-  { d: 17, w: "Thu" },
-  { d: 18, w: "Fri" },
-  { d: 19, w: "Sat" },
-  { d: 20, w: "Sun" },
-  { d: 21, w: "Mon" },
-  { d: 22, w: "Tue" },
-  { d: 23, w: "Wed" },
-  { d: 24, w: "Thu" },
-];
+export const CAL_DAYS = Array.from({ length: 11 }, (_, index) => {
+  const date = new Date();
+  date.setDate(date.getDate() + index);
+
+  return {
+    d: date.getDate(),
+    w: date.toLocaleDateString("en-US", {
+      weekday: "short",
+    }),
+  };
+});

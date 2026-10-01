@@ -1,9 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, Text, View, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import CalendarPicker from "../../components/CalendarPicker";
 import TimePicker from "../../components/TimePicker";
 import { Tag } from "../../components/ui/Chip";
@@ -15,24 +15,68 @@ import { createBooking, getSalon } from "../../services/api";
 const STEPS = ["Service", "Date & Time", "Review"];
 
 export default function Booking() {
-  const { salonId, barberId, serviceIndex } = useLocalSearchParams<{
-    salonId: string;
-    barberId?: string;
-    serviceIndex?: string;
-  }>();
+  const { salonId, barberId, serviceIndex, serviceIndices, staffSelections } =
+    useLocalSearchParams<{
+      salonId: string;
+      barberId?: string;
+      serviceIndex?: string;
+      serviceIndices?: string;
+      staffSelections?: string;
+    }>();
 
   const insets = useSafeAreaInsets();
-  const { addBooking } = useApp();
+  const { addBooking, user } = useApp();
+  const ADMIN_WHATSAPP = "628980223632";
 
   const [salon, setSalon] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const [step, setStep] = useState(0);
-  const [selectedServices, setSelectedServices] = useState<number[]>(
-    serviceIndex ? [Number(serviceIndex)] : [],
-  );
-  const [date, setDate] = useState(19);
+  const [selectedServices, setSelectedServices] = useState<number[]>(() => {
+    if (serviceIndices) {
+      return String(serviceIndices)
+        .split(",")
+        .map(Number)
+        .filter((n) => !Number.isNaN(n));
+    }
+
+    if (serviceIndex) {
+      return [Number(serviceIndex)];
+    }
+
+    return [];
+  });
+  const [date, setDate] = useState(() => {
+    const today = new Date();
+    return today.getDate();
+  });
+
   const [time, setTime] = useState("");
+  const selectedDate = new Date();
+  selectedDate.setDate(date);
+  const [selectedStaff, setSelectedStaff] = useState<{
+    hair: number | null;
+    massage: number | null;
+    nail: number | null;
+  }>(() => {
+    if (!staffSelections) {
+      return {
+        hair: null,
+        massage: null,
+        nail: null,
+      };
+    }
+
+    try {
+      return JSON.parse(String(staffSelections));
+    } catch {
+      return {
+        hair: null,
+        massage: null,
+        nail: null,
+      };
+    }
+  });
 
   // =========================
   // GET SALON FROM API
@@ -88,11 +132,16 @@ export default function Booking() {
     );
   }
 
+  console.log("SALON DATA:", salon);
+
   // =========================
   // API DATA
   // =========================
   const services = salon.services ?? [];
   const barbers = salon.hairstylists ?? [];
+
+  console.log("SERVICES DATA:", services);
+  console.log("STAFF DATA:", barbers);
 
   const selectedBarber =
     barbers.find((b: any) => b.id === Number(barberId)) ?? barbers[0] ?? null;
@@ -152,21 +201,65 @@ export default function Booking() {
     }
 
     try {
-      const result = await createBooking({
-        salon_id: salon.id,
+      const token = await AsyncStorage.getItem("auth_token");
 
-        hairstylist_id: barber.id ?? null,
+      if (!token) {
+        throw new Error("User belum login");
+      }
 
-        booking_date: `2026-07-${String(date).padStart(2, "0")}`,
+      const result = await createBooking(
+        {
+          salon_id: salon.id,
 
-        booking_time: time,
+          // Tetap dikirim untuk compatibility dengan struktur booking lama
+          hairstylist_id: barber.id ?? null,
 
-        service_ids: selectedServiceItems.map((service: any) => service.id),
-      });
+          // Staff yang dipilih berdasarkan kategori service
+          staff_selections: selectedStaff,
+
+          booking_date: `${selectedDate.getFullYear()}-${String(
+            selectedDate.getMonth() + 1
+          ).padStart(2, "0")}-${String(date).padStart(2, "0")}`,
+
+          booking_time: time,
+
+          service_ids: selectedServiceItems.map((service: any) => service.id),
+        },
+        token
+      );
+
+      const booking = result.booking;
+  
+        const message = `Halo saya ingin mengonfirmasi booking.
+
+        Booking ID: #${booking.id}
+        Nama: ${user.name}
+        Service: ${selectedServiceItems
+          .map((service: any) => service.name)
+          .join(", ")}
+        Hairstylist: ${barber.name}
+        Tanggal: ${selectedDate.toLocaleDateString("id-ID", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })}
+        Jam: ${time}
+        Total: Rp ${totalPrice.toLocaleString("id-ID")}
+
+        Mohon dikonfirmasi. Terima kasih.`;
+
+        const whatsappUrl = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(
+          message
+        )}`;
+
+        await Linking.openURL(whatsappUrl);
+
+      await Linking.openURL(whatsappUrl);
 
       console.log("BOOKING CREATED:", result);
 
-      const booking = result.booking;
+      console.log("BOOKING CREATED:", result);
 
       router.replace({
         pathname: "/booking-success",
@@ -267,7 +360,17 @@ export default function Booking() {
             <Text className="text-xs text-gray-400">{salon.name}</Text>
           </View>
 
-          <Pressable onPress={() => router.push(`/salon/${salon.id}`)}>
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: `/salon/${salon.id}`,
+                params: {
+                  tab: "barbers",
+                  serviceIndices: selectedServices.join(","),
+                },
+              })
+            }
+          >
             <Text className="text-primary-600 text-xs font-poppins-semibold">
               Change
             </Text>
@@ -358,7 +461,10 @@ export default function Booking() {
               <Text className="font-poppins-bold text-gray-900 text-sm mb-3">
                 Select Date ·{" "}
                 <Text className="text-gray-400 font-poppins-medium text-xs">
-                  July 2026
+                  {selectedDate.toLocaleDateString("en-US", {
+                    month: "long",
+                    year: "numeric",
+                  })}
                 </Text>
               </Text>
 
@@ -370,7 +476,12 @@ export default function Booking() {
                 Select Time
               </Text>
 
-              <TimePicker selected={time} onSelect={setTime} />
+              <TimePicker
+                selected={time}
+                onSelect={setTime}
+                openingTime={salon.opening_time}
+                closingTime={salon.closing_hour}
+              />
             </View>
           </View>
         )}
@@ -428,7 +539,12 @@ export default function Booking() {
                 {
                   icon: "calendar-outline",
                   label: "Date",
-                  value: `${dow}, July ${date}, 2026`,
+                  value: selectedDate.toLocaleDateString("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  }),
                 },
                 {
                   icon: "time-outline",

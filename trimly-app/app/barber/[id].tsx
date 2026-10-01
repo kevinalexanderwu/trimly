@@ -6,7 +6,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BARBERS, SALONS } from "../../constants/data";
 
 export default function BarberDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, salonId, serviceIndices } = useLocalSearchParams<{
+    id: string;
+    salonId?: string;
+    serviceIndices?: string;
+  }>();
   const insets = useSafeAreaInsets();
 
   const barber = BARBERS.find((b) => b.id === Number(id)) ?? BARBERS[0];
@@ -157,9 +161,17 @@ export default function BarberDetail() {
       <View className="absolute bottom-0 left-0 right-0 px-5 pb-6 pt-8">
         <Pressable
           disabled={!barber.available}
-          onPress={() =>
-            router.push(`/booking/${salon.id}?barberId=${barber.id}`)
-          }
+          onPress={() => {
+            if (salonId && serviceIndices) {
+              router.push(
+                `/booking/${salonId}?barberId=${barber.id}&serviceIndices=${encodeURIComponent(
+                  serviceIndices
+                )}`
+              );
+            } else {
+              router.push(`/booking/${salon.id}?barberId=${barber.id}`);
+            }
+          }}
           className={`rounded-2xl py-4 flex-row items-center justify-center gap-2 shadow-xl ${
             barber.available ? "bg-primary-600" : "bg-gray-200"
           }`}
