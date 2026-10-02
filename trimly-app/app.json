@@ -24,21 +24,26 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "splash": {
+        "image": "./assets/images/web-splash.png",
+        "backgroundColor": "#2563EB",
+        "resizeMode": "contain"
+      }
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
+          {
+            "image": "./assets/images/splash-icon.png",
+            "imageWidth": 96,
+            "resizeMode": "contain",
+            "backgroundColor": "#2563EB",
+            "dark": {
+              "backgroundColor": "#2563EB"
+            }
           }
-        }
       ],
       "expo-secure-store"
     ],

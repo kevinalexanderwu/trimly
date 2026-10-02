@@ -117,7 +117,7 @@ export default function Register() {
           <View className="items-center mb-6">
             <Image
               source={require("../assets/images/trimly-logo.png")}
-              className="w-20 h-20"
+              className="w-14 h-14"
               resizeMode="contain"
             />
           </View>
