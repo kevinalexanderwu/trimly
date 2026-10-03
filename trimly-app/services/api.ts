@@ -1,4 +1,5 @@
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
+console.log("API_URL:", API_URL);
 
 export async function getSalons() {
   const response = await fetch(`${API_URL}/salons`);
