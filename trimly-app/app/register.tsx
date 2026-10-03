@@ -113,12 +113,22 @@ export default function Register() {
             <Ionicons name="chevron-back" size={18} color="#fff" />
           </Pressable>
 
-          {/* Logo */}
-          <View className="items-center mb-6">
+{/* Logo */}
+          <View
+            style={{
+              alignItems: "center",
+              marginBottom: 24,
+            }}
+          >
             <Image
               source={require("../assets/images/trimly-logo.png")}
-              className="w-14 h-14"
               resizeMode="contain"
+              style={{
+                width: 80,
+                height: 80,
+                maxWidth: 80,
+                maxHeight: 80,
+              }}
             />
           </View>
 
