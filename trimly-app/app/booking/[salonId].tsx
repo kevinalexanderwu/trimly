@@ -26,7 +26,7 @@ export default function Booking() {
 
   const insets = useSafeAreaInsets();
   const { addBooking, user } = useApp();
-  const ADMIN_WHATSAPP = "628980223632";
+  const ADMIN_WHATSAPP = "628112318778";
 
   const [salon, setSalon] = useState<any>(null);
   const [loading, setLoading] = useState(true);
